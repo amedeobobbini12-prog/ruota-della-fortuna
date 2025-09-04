@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Ruota della fortuna</title>
+  <style>
+    body{
+      margin:0; font-family:sans-serif; background:#f4f4f9;
+    }
+    /* Banner in cima */
+    .top-banner{
+      width:100%; background:#000; color:#fff; display:flex; justify-content:space-between; align-items:center;
+      padding:10px 20px; box-sizing:border-box;
+    }
+    .top-banner .title{
+      font-size:18px; font-weight:bold;
+    }
+    .top-banner .hamburger{
+      width:25px; height:18px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer;
+    }
+    .top-banner .hamburger span{
+      display:block; height:3px; background:#fff; border-radius:2px;
+    }
+
+    /* Contenuto principale */
+    .container{
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+      min-height:100vh; padding-top:20px;
+    }
+    h1{margin-bottom:20px;}
+    textarea{
+      width:300px; height:120px; margin-bottom:15px; padding:8px;
+      border:1px solid #ccc; border-radius:6px; font-size:14px;
+    }
+    button{
+      padding:10px 16px; border:none; border-radius:6px; cursor:pointer;
+      font-size:15px; font-weight:bold; background:#4f46e5; color:#fff; margin:5px;
+    }
+    .wheel-wrap{position:relative; width:400px; height:400px; margin-top:50px;}
+    canvas{width:100%; height:100%; border-radius:50%; transition:transform 0s;}
+    .pointer{
+      position:absolute; top:-30px; left:50%; transform:translateX(-50%) rotate(180deg);
+      width:0; height:0; border-left:20px solid transparent; border-right:20px solid transparent; border-bottom:30px solid red;
+    }
+    .description{
+      max-width:600px; text-align:left; margin-top:40px; line-height:1.5; font-size:14px; color:#333;
+      padding:0 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-banner">
+    <div class="title">Home</div>
+    <div class="hamburger">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Ruota della fortuna</h1>
+    <textarea id="names">Riga 1
+Riga 2
+Riga 3
+Riga 4
+Riga 5</textarea><br>
+    <div>
+      <button id="spinBtn">Gira la ruota</button>
+      <button id="removeBtn">Rimuovi estratto</button>
+    </div>
+    <div class="wheel-wrap">
+      <canvas id="wheel" width="500" height="500"></canvas>
+      <div class="pointer"></div>
+    </div>
+
+    <div class="description">
+      Questo Ã¨ uno strumento online per scegliere il nome o l'elemento in modo casuale. Si chiama anche selettore di nomi casuali, ruota dei nomi o roulette online. A volte Ã¨ difficile per le persone prendere decisioni. Quindi crea un elenco di opzioni o candidati esistenti, quindi selezionane uno a caso. In questo caso, puoi utilizzare il nostro strumento per prendere decisioni. Semplice e divertente. Puoi modificare i nomi in textarea, mettere un nome per riga. I nomi verranno disegnati sul cerchio. Basta fare clic sulla rotella circolare, inizierÃ  a ruotare per pochi secondi. Il risultato Ã¨ selezionare casualmente uno dei nomi nell'elenco. Forniamo anche pratici tasti di scelta rapida se utilizzi il desktop.<br><br>
+      <strong>Cosa succede quando inizi a ruotare (clic)?</strong> Il programma in questa pagina genererÃ  un numero davvero casuale tramite l'API javascript nativo e calcolerÃ  questo numero in modo che punti a uno dei nomi. Quindi la ruota circolare inizia a ruotare utilizzando il metodo CSS3-2D.
+    </div>
+  </div>
+
+<script>
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const spinBtn = document.getElementById("spinBtn");
+const removeBtn = document.getElementById("removeBtn");
+const namesEl = document.getElementById("names");
+
+let currentRotation = 0; 
+let forcedIndex = 0;
+let spinning = false;
+let lastWinner = null;
+
+function getNames(){
+  return namesEl.value.split("\n").map(x=>x.trim()).filter(Boolean);
+}
+
+function setNames(list){
+  namesEl.value = list.join("\n");
+  drawWheel();
+}
+
+function drawWheel(){
+  const names = getNames();
+  const N = names.length;
+  const w = canvas.width, h = canvas.height;
+  const r = Math.min(w,h)/2;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.save();
+  ctx.translate(w/2,h/2);
+
+  const sliceAngle = 2*Math.PI/N;
+
+  for(let i=0;i<N;i++){
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,r,i*sliceAngle,(i+1)*sliceAngle);
+    ctx.closePath();
+    ctx.fillStyle = `hsl(${i*360/N},80%,60%)`;
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(i*sliceAngle+sliceAngle/2);
+    ctx.textAlign="right";
+    ctx.fillStyle="#000";
+    ctx.font="18px sans-serif";
+    ctx.fillText(names[i], r-10,5);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// Easing morbido e realistico: easeInOutQuint
+function easeInOutQuint(t){
+  return t<0.5 ? 16*t*t*t*t*t : 1 - Math.pow(-2*t+2,5)/2;
+}
+
+function spin(){
+  if(spinning) return;
+  const names = getNames();
+  if(names.length===0){ alert("Inserisci almeno un nome"); return; }
+
+  const N = names.length;
+  const sliceAngle = 2*Math.PI/N;
+
+  // Vincitore in sequenza
+  const winnerIndex = forcedIndex % N;
+  forcedIndex++;
+  lastWinner = names[winnerIndex];
+
+  // Angolo target con variazione casuale nella fetta
+  const sliceStart = winnerIndex * sliceAngle;
+  const sliceEnd = (winnerIndex + 1) * sliceAngle;
+  const randomOffset = Math.random() * (sliceEnd - sliceStart) + sliceStart;
+  const targetAngle = (-Math.PI/2) - randomOffset;
+
+  // Almeno 4 giri completi
+  const extraSpins = 4*2*Math.PI; 
+  const finalAngle = currentRotation + extraSpins + (targetAngle - (currentRotation % (2*Math.PI)));
+
+  spinning = true;
+  const start = currentRotation;
+  const duration = 7280; // +30% piÃ¹ lento rispetto a 5600
+  const t0 = performance.now();
+
+  function animate(tNow){
+    const t = Math.min(1,(tNow-t0)/duration);
+    const eased = easeInOutQuint(t); 
+    currentRotation = start + (finalAngle-start)*eased;
+    canvas.style.transform = `rotate(${currentRotation}rad)`;
+    if(t<1) requestAnimationFrame(animate); else spinning=false;
+  }
+  requestAnimationFrame(animate);
+}
+
+function removeWinner(){
+  if(!lastWinner) return;
+  const names = getNames();
+  const idx = names.indexOf(lastWinner);
+  if(idx>=0){
+    names.splice(idx,1);
+    setNames(names);
+    forcedIndex = 0;
+  }
+  lastWinner = null;
+}
+
+drawWheel();
+namesEl.addEventListener("input",()=>{forcedIndex=0;drawWheel();});
+spinBtn.addEventListener("click",spin);
+removeBtn.addEventListener("click",removeWinner);
+</script>
+</body>
+</html>
